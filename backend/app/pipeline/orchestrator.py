@@ -59,7 +59,12 @@ async def _llm_repair_fn(
     errors: list[str],
     full_config: dict,
 ) -> dict | None:
-    """LLM-based repair function for the repair loop."""
+    """LLM-based repair function for the repair loop.
+
+    Skips the LLM call if the prompt would exceed the free-tier
+    token-per-minute limit (6000 TPM on Groq free tier).
+    Stage 5 boot repair handles structural fixes locally in that case.
+    """
     from app.llm.client import get_llm_client
     from app.llm.prompts import PROMPTS
 
@@ -70,6 +75,17 @@ async def _llm_repair_fn(
         .replace("{errors}", json.dumps(errors, indent=2))
         .replace("{full_config}", json.dumps(full_config, indent=2))
     )
+
+    # Estimate token count (chars / 4 ≈ tokens)
+    # Groq free tier: 6000 TPM — skip if prompt alone would exceed ~5000 tokens
+    estimated_tokens = len(prompt) // 4
+    if estimated_tokens > 5000:
+        logger.warning(
+            f"Stage 4 LLM repair skipped for layer '{layer}': "
+            f"prompt too large (~{estimated_tokens} tokens > 5000 limit). "
+            f"Stage 5 boot repair will handle structural fixes."
+        )
+        return None
 
     client = get_llm_client()
     response = await client.generate(prompt=prompt, stage="stage4_repair")
