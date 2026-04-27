@@ -4,7 +4,7 @@
 
 import { CompileResponse } from './types';
 
-const API_BASE = '/api/v1';
+const API_BASE = 'http://localhost:8000/api/v1';
 
 export async function compileApp(prompt: string): Promise<CompileResponse> {
   const res = await fetch(`${API_BASE}/generate`, {
