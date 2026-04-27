@@ -165,6 +165,7 @@ class LLMClient:
             model="llama-3.1-8b-instant",
             max_tokens=max_tokens,
             temperature=0,
+            response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": "You output only valid JSON."},
                 {"role": "user", "content": prompt},

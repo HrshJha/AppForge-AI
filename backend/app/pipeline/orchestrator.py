@@ -11,6 +11,7 @@ Stage flow:
 from __future__ import annotations
 
 import json
+import asyncio
 import time
 import uuid
 import logging
@@ -116,6 +117,9 @@ async def run_pipeline(prompt: str) -> CompileResponse:
         all_metrics.append(s1_metrics)
         assumptions.extend(intent_ir.assumptions)
 
+        # Small pause so Stage 2 doesn't share the same TPM window as Stage 1
+        await asyncio.sleep(3)
+
         # Check ambiguity gate
         if intent_ir.ambiguity_score > settings.AMBIGUITY_THRESHOLD:
             elapsed = int((time.time() - start_time) * 1000)
@@ -138,6 +142,9 @@ async def run_pipeline(prompt: str) -> CompileResponse:
         design_ir, s2_metrics = await generate_system_design(intent_ir)
         all_metrics.append(s2_metrics)
         assumptions.extend(design_ir.assumptions)
+
+        # Small pause so Stage 3 parallel calls don't share the TPM window with Stage 2
+        await asyncio.sleep(3)
 
         # ============================================================
         # Stage 3: Parallel Schema Generation
