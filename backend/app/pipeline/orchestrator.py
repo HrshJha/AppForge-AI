@@ -31,7 +31,7 @@ from app.pipeline.stage2_design import generate_system_design, SystemDesignError
 from app.pipeline.stage3_generators import generate_all_schemas, SchemaGenerationError
 from app.pipeline.stage4_validator import validate_app_config
 from app.pipeline.stage4_repair import run_repair_loop
-from app.pipeline.stage5_packager import generate_execution_report
+from app.pipeline.stage5_packager import generate_execution_report, run_boot_repair
 
 logger = logging.getLogger(__name__)
 
@@ -169,25 +169,36 @@ async def run_pipeline(prompt: str) -> CompileResponse:
         ))
 
         # ============================================================
-        # Stage 5: Execution Packager
+        # Stage 5: Execution Packager (Boot Repair)
         # ============================================================
-        logger.info("Stage 5: Execution Packager")
+        logger.info("Stage 5: Execution Packager (Boot Repair)")
         s5_start = time.time()
 
-        # Try to parse the repaired config
+        # 5a: Run boot repair on raw dict (fixes types, PKs, paths, etc.)
+        boot_repaired_config, boot_report = run_boot_repair(
+            config_dict=repaired_config,
+            max_passes=3,
+        )
+
+        # 5b: Try to parse the boot-repaired config into typed model
         try:
-            validated_config = ValidatedAppConfig.model_validate(repaired_config)
+            validated_config = ValidatedAppConfig.model_validate(boot_repaired_config)
             execution_report = generate_execution_report(validated_config)
         except Exception as e:
-            logger.error(f"Stage 5 failed to parse config: {e}")
+            logger.error(f"Stage 5 failed to parse config after boot repair: {e}")
             execution_report = None
             validated_config = None
 
         s5_latency = int((time.time() - s5_start) * 1000)
+        boot_passed = (
+            execution_report is not None
+            and execution_report.overall_pass
+            and not boot_report.oscillation_detected
+        )
         all_metrics.append(StageMetrics(
             stage="stage5_packager",
             latency_ms=s5_latency,
-            success=execution_report is not None and execution_report.overall_pass,
+            success=boot_passed,
         ))
 
         # ============================================================

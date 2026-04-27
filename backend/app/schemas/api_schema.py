@@ -24,7 +24,10 @@ class APIEndpoint(BaseModel):
 class APIResource(BaseModel):
     """A REST resource grouping related endpoints."""
     name: str
-    entity: str = Field(description="Domain entity this resource maps to")
+    entity: str | None = Field(
+        default=None,
+        description="Domain entity this resource maps to (null for non-entity resources like auth)",
+    )
     base_path: str = Field(description="Base URL path, e.g. /api/contacts")
     endpoints: list[APIEndpoint] = Field(default_factory=list)
 

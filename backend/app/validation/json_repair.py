@@ -47,11 +47,15 @@ def repair_json(raw: str) -> tuple[dict[str, Any], bool]:
     text, did_fix = _fix_trailing_commas(text)
     repaired = repaired or did_fix
 
-    # --- Step 4: Fix single-quoted strings ---
+    # --- Step 4: Fix invalid backslash-escaped single quotes ---
+    text, did_fix = _fix_escaped_single_quotes(text)
+    repaired = repaired or did_fix
+
+    # --- Step 5: Fix single-quoted strings (only if JSON still fails) ---
     text, did_fix = _fix_single_quotes(text)
     repaired = repaired or did_fix
 
-    # --- Step 5: Try parsing ---
+    # --- Step 6: Try parsing ---
     try:
         parsed = json.loads(text)
         if isinstance(parsed, dict):
@@ -60,7 +64,7 @@ def repair_json(raw: str) -> tuple[dict[str, Any], bool]:
     except json.JSONDecodeError:
         pass
 
-    # --- Step 6: Try truncating at last valid closing brace ---
+    # --- Step 7: Try truncating at last valid closing brace ---
     text_trunc, did_trunc = _truncate_to_last_brace(text)
     if did_trunc:
         try:
@@ -104,19 +108,38 @@ def _fix_trailing_commas(text: str) -> tuple[str, bool]:
     return fixed, fixed != text
 
 
+def _fix_escaped_single_quotes(text: str) -> tuple[str, bool]:
+    """Fix invalid backslash-escaped single quotes inside JSON strings.
+
+    LLMs frequently produce \\' inside double-quoted JSON strings,
+    but \\' is NOT a valid JSON escape sequence.  Single quotes are
+    perfectly legal inside double-quoted strings, so we simply
+    remove the backslash:  \\'  →  '
+    """
+    if "\\" not in text or "'" not in text:
+        return text, False
+    fixed = text.replace("\\'", "'")
+    return fixed, fixed != text
+
+
 def _fix_single_quotes(text: str) -> tuple[str, bool]:
     """Replace single-quoted strings with double-quoted strings.
 
-    This is a conservative approach — only replaces single quotes that
-    look like they're wrapping string keys/values in JSON context.
+    Only applied when the text appears to be single-quote-delimited JSON
+    (no double-quoted keys found).  If the text already uses double quotes
+    for keys, we leave it alone to avoid mangling embedded single quotes.
     """
-    # Only apply if the text has single quotes but no double quotes for keys
     if "'" not in text:
         return text, False
 
-    # Replace single-quoted keys and values
-    # Pattern: 'key' → "key"
-    fixed = re.sub(r"'([^']*)'", r'"\1"', text)
+    # If we already see double-quoted keys, the JSON structure uses
+    # double quotes — any remaining single quotes are literal characters
+    # inside string values and should NOT be converted.
+    if re.search(r'"[^"]+"\s*:', text):
+        return text, False
+
+    # No double-quoted keys found → the JSON is likely single-quote delimited
+    fixed = re.sub(r"'([^']*?)'", r'"\1"', text)
     return fixed, fixed != text
 
 
