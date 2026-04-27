@@ -85,7 +85,7 @@ class LLMClient:
         self,
         prompt: str,
         stage: str = "default",
-        max_retries: int = 2,
+        max_retries: int = 4,
     ) -> LLMResponse:
         """Generate a JSON response from the LLM.
 
@@ -144,7 +144,7 @@ class LLMClient:
             except Exception as e:
                 last_error = e
                 if attempt < max_retries:
-                    wait = 2 ** attempt  # Exponential backoff: 1s, 2s
+                    wait = 3 ** attempt  # Exponential backoff: 1s, 3s, 9s, 27s
                     logger.warning(
                         f"LLM call failed (attempt {attempt + 1}/{max_retries + 1}), "
                         f"retrying in {wait}s: {e}"
@@ -171,6 +171,18 @@ class LLMClient:
             ],
         )
         content: str = response.choices[0].message.content or ""
+        finish_reason = response.choices[0].finish_reason
+
+        # If the model was cut off, the JSON is almost certainly incomplete
+        if finish_reason != "stop":
+            logger.warning(
+                f"Groq response truncated (finish_reason={finish_reason}, "
+                f"content_len={len(content)}). Will retry."
+            )
+            raise RuntimeError(
+                f"Groq response truncated: finish_reason={finish_reason}"
+            )
+
         usage = response.usage
         input_tok: int = usage.prompt_tokens if usage else 0
         output_tok: int = usage.completion_tokens if usage else 0
