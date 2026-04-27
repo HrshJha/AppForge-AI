@@ -91,7 +91,7 @@ def validate_full_config(app_config: dict[str, Any]) -> tuple[ValidatedAppConfig
             layer = str(err["loc"][0]) if err["loc"] else "unknown"
             violations.append(
                 ValidationViolation(
-                    rule_id=f"STRUCT-FULL-INVALID",
+                    rule_id="STRUCT-FULL-INVALID",
                     layer=layer,
                     message=f"{field_path}: {err['msg']}",
                     severity=Severity.ERROR,

@@ -9,7 +9,6 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from app.schemas.common import ValidationViolation, Severity
-from app.schemas.app_config import ValidatedAppConfig
 from app.validation.json_repair import repair_json
 from app.validation.rules import validate_all, compute_consistency_score
 
