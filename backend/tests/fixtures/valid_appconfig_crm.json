@@ -1,0 +1,217 @@
+{
+  "metadata": {
+    "app_name": "CRM Pro",
+    "version": "1.0.0",
+    "assumptions": ["Default JWT expiry 24h", "bcrypt for password storage"]
+  },
+  "domain": {
+    "entities": [
+      {
+        "name": "User",
+        "fields": [
+          {"name": "email", "type": "email", "required": true, "unique": true},
+          {"name": "password", "type": "password", "required": true},
+          {"name": "name", "type": "string", "required": true},
+          {"name": "role", "type": "enum", "required": true}
+        ]
+      },
+      {
+        "name": "Contact",
+        "fields": [
+          {"name": "name", "type": "string", "required": true},
+          {"name": "email", "type": "email", "required": false},
+          {"name": "phone", "type": "string", "required": false},
+          {"name": "company", "type": "string", "required": false},
+          {"name": "status", "type": "enum", "required": true}
+        ]
+      },
+      {
+        "name": "Deal",
+        "fields": [
+          {"name": "title", "type": "string", "required": true},
+          {"name": "value", "type": "float", "required": true},
+          {"name": "stage", "type": "enum", "required": true}
+        ]
+      }
+    ]
+  },
+  "auth": {
+    "strategy": "jwt",
+    "token_expiry": "24h",
+    "refresh_token": true,
+    "password_storage": "bcrypt",
+    "rate_limit_enabled": true,
+    "rate_limit_requests_per_minute": 60,
+    "roles": ["user", "admin"],
+    "permissions": [
+      {"role": "admin", "permissions": ["*"]},
+      {"role": "user", "permissions": ["contacts.read", "contacts.write", "deals.read", "deals.write"]}
+    ],
+    "guards": [
+      {"name": "admin_gate", "required_roles": ["admin"], "redirect": "/login"}
+    ]
+  },
+  "db": {
+    "tables": [
+      {
+        "name": "users",
+        "entity": "User",
+        "columns": [
+          {"name": "id", "type": "UUID", "primary_key": true},
+          {"name": "email", "type": "VARCHAR", "unique": true},
+          {"name": "password", "type": "VARCHAR"},
+          {"name": "name", "type": "VARCHAR"},
+          {"name": "role", "type": "VARCHAR"},
+          {"name": "created_at", "type": "TIMESTAMP"},
+          {"name": "updated_at", "type": "TIMESTAMP"}
+        ]
+      },
+      {
+        "name": "contacts",
+        "entity": "Contact",
+        "columns": [
+          {"name": "id", "type": "UUID", "primary_key": true},
+          {"name": "name", "type": "VARCHAR"},
+          {"name": "email", "type": "VARCHAR", "nullable": true},
+          {"name": "phone", "type": "VARCHAR", "nullable": true},
+          {"name": "company", "type": "VARCHAR", "nullable": true},
+          {"name": "status", "type": "VARCHAR"},
+          {"name": "user_id", "type": "UUID", "foreign_key": "users.id"},
+          {"name": "created_at", "type": "TIMESTAMP"},
+          {"name": "updated_at", "type": "TIMESTAMP"}
+        ]
+      },
+      {
+        "name": "deals",
+        "entity": "Deal",
+        "columns": [
+          {"name": "id", "type": "UUID", "primary_key": true},
+          {"name": "title", "type": "VARCHAR"},
+          {"name": "value", "type": "FLOAT"},
+          {"name": "stage", "type": "VARCHAR"},
+          {"name": "contact_id", "type": "UUID", "foreign_key": "contacts.id"},
+          {"name": "user_id", "type": "UUID", "foreign_key": "users.id"},
+          {"name": "created_at", "type": "TIMESTAMP"},
+          {"name": "updated_at", "type": "TIMESTAMP"}
+        ]
+      }
+    ]
+  },
+  "api": {
+    "resources": [
+      {
+        "name": "auth",
+        "entity": "User",
+        "base_path": "/api/auth",
+        "endpoints": [
+          {"method": "POST", "path": "/api/auth/register", "auth_required": false, "roles": [], "description": "Register new user"},
+          {"method": "POST", "path": "/api/auth/login", "auth_required": false, "roles": [], "description": "Login"},
+          {"method": "POST", "path": "/api/auth/refresh", "auth_required": true, "roles": [], "description": "Refresh token"}
+        ]
+      },
+      {
+        "name": "contacts",
+        "entity": "Contact",
+        "base_path": "/api/contacts",
+        "endpoints": [
+          {"method": "GET", "path": "/api/contacts", "auth_required": true, "roles": [], "description": "List contacts"},
+          {"method": "POST", "path": "/api/contacts", "auth_required": true, "roles": [], "description": "Create contact"},
+          {"method": "GET", "path": "/api/contacts/{id}", "auth_required": true, "roles": [], "description": "Get contact"},
+          {"method": "PUT", "path": "/api/contacts/{id}", "auth_required": true, "roles": [], "description": "Update contact"},
+          {"method": "DELETE", "path": "/api/contacts/{id}", "auth_required": true, "roles": [], "description": "Delete contact"}
+        ]
+      },
+      {
+        "name": "deals",
+        "entity": "Deal",
+        "base_path": "/api/deals",
+        "endpoints": [
+          {"method": "GET", "path": "/api/deals", "auth_required": true, "roles": [], "description": "List deals"},
+          {"method": "POST", "path": "/api/deals", "auth_required": true, "roles": [], "description": "Create deal"},
+          {"method": "GET", "path": "/api/deals/{id}", "auth_required": true, "roles": [], "description": "Get deal"},
+          {"method": "PUT", "path": "/api/deals/{id}", "auth_required": true, "roles": [], "description": "Update deal"},
+          {"method": "DELETE", "path": "/api/deals/{id}", "auth_required": true, "roles": [], "description": "Delete deal"}
+        ]
+      },
+      {
+        "name": "analytics",
+        "entity": "User",
+        "base_path": "/api/analytics",
+        "endpoints": [
+          {"method": "GET", "path": "/api/analytics/summary", "auth_required": true, "roles": ["admin"], "description": "Admin analytics summary"}
+        ]
+      }
+    ]
+  },
+  "ui": {
+    "pages": [
+      {
+        "id": "login",
+        "title": "Login",
+        "route": "/login",
+        "auth_required": false,
+        "roles": [],
+        "components": [
+          {"type": "form", "props": {"entity": "User", "fields": ["email", "password"]}}
+        ]
+      },
+      {
+        "id": "dashboard",
+        "title": "Dashboard",
+        "route": "/dashboard",
+        "auth_required": true,
+        "roles": [],
+        "components": [
+          {"type": "heading", "props": {"text": "Dashboard"}},
+          {"type": "statcard", "props": {"label": "Total Contacts"}, "data_source": "GET /api/contacts"},
+          {"type": "statcard", "props": {"label": "Total Deals"}, "data_source": "GET /api/deals"}
+        ]
+      },
+      {
+        "id": "contacts",
+        "title": "Contacts",
+        "route": "/contacts",
+        "auth_required": true,
+        "roles": [],
+        "components": [
+          {"type": "heading", "props": {"text": "Contacts"}},
+          {"type": "table", "props": {"resource": "contacts"}, "data_source": "GET /api/contacts"},
+          {"type": "form", "props": {"entity": "Contact", "fields": ["name", "email", "phone", "company", "status"]}}
+        ]
+      },
+      {
+        "id": "deals",
+        "title": "Deals",
+        "route": "/deals",
+        "auth_required": true,
+        "roles": [],
+        "components": [
+          {"type": "heading", "props": {"text": "Deals"}},
+          {"type": "table", "props": {"resource": "deals"}, "data_source": "GET /api/deals"}
+        ]
+      },
+      {
+        "id": "admin",
+        "title": "Admin Analytics",
+        "route": "/admin",
+        "auth_required": true,
+        "roles": ["admin"],
+        "components": [
+          {"type": "heading", "props": {"text": "Admin Analytics"}},
+          {"type": "statcard", "props": {"label": "Summary"}, "data_source": "GET /api/analytics/summary"}
+        ]
+      }
+    ]
+  },
+  "logic": {
+    "rules": [
+      {
+        "id": "admin_only_analytics",
+        "trigger": "on_access",
+        "condition": "user.role == admin",
+        "action": "allow",
+        "target": "analytics"
+      }
+    ]
+  }
+}
