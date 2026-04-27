@@ -1,4 +1,4 @@
-"""Unified LLM client abstracting Anthropic and OpenAI APIs.
+"""Unified LLM client abstracting GroqCloud and OpenAI APIs.
 
 Features:
     - temperature=0, JSON mode enforced
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # Cost per 1M tokens (approximate, for tracking only)
 # ---------------------------------------------------------------------------
 COST_TABLE: dict[str, dict[str, float]] = {
-    "anthropic": {"input": 3.0, "output": 15.0},  # Claude Sonnet
+    "groq": {"input": 0.59, "output": 0.79},  # Llama3-70b on GroqCloud
     "openai": {"input": 2.5, "output": 10.0},  # GPT-4o
 }
 
@@ -62,16 +62,19 @@ class LLMResponse:
 
 
 class LLMClient:
-    """Unified client for Anthropic/OpenAI with JSON mode and retry logic."""
+    """Unified client for GroqCloud/OpenAI with JSON mode and retry logic."""
 
     def __init__(self, provider: str | None = None) -> None:
         self.provider: str = provider or settings.LLM_PROVIDER
-        self._anthropic_client: Any = None
+        self._groq_client: Any = None
         self._openai_client: Any = None
 
-        if self.provider == "anthropic":
-            import anthropic  # type: ignore[import-untyped]
-            self._anthropic_client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        if self.provider == "groq":
+            import openai as openai_sdk  # type: ignore[import-untyped]
+            self._groq_client = openai_sdk.OpenAI(
+                api_key=settings.GROQ_API_KEY,
+                base_url="https://api.groq.com/openai/v1",
+            )
         elif self.provider == "openai":
             import openai  # type: ignore[import-untyped]
             self._openai_client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -101,8 +104,8 @@ class LLMClient:
             try:
                 start = time.time()
 
-                if self.provider == "anthropic":
-                    content, input_tok, output_tok = self._call_anthropic(
+                if self.provider == "groq":
+                    content, input_tok, output_tok = self._call_groq(
                         prompt, max_tokens
                     )
                 else:
@@ -152,21 +155,25 @@ class LLMClient:
             f"LLM call failed after {max_retries + 1} attempts: {last_error}"
         )
 
-    def _call_anthropic(
+    def _call_groq(
         self, prompt: str, max_tokens: int
     ) -> tuple[str, int, int]:
-        """Call Anthropic Claude API."""
-        if self._anthropic_client is None:
-            raise RuntimeError("Anthropic client not initialized")
-        response = self._anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
+        """Call GroqCloud API (OpenAI-compatible)."""
+        if self._groq_client is None:
+            raise RuntimeError("Groq client not initialized")
+        response = self._groq_client.chat.completions.create(
+            model="llama3-70b-8192",
             max_tokens=max_tokens,
             temperature=0,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": "You output only valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
         )
-        content: str = response.content[0].text
-        input_tok: int = response.usage.input_tokens
-        output_tok: int = response.usage.output_tokens
+        content: str = response.choices[0].message.content or ""
+        usage = response.usage
+        input_tok: int = usage.prompt_tokens if usage else 0
+        output_tok: int = usage.completion_tokens if usage else 0
         return content, input_tok, output_tok
 
     def _call_openai(

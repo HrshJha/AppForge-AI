@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     """AppForge AI configuration – loaded from .env or environment variables."""
 
     # --- LLM ---
-    LLM_PROVIDER: Literal["anthropic", "openai"] = "anthropic"
-    ANTHROPIC_API_KEY: str = ""
+    LLM_PROVIDER: Literal["groq", "openai"] = "groq"
+    GROQ_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
 
     # --- Database ---

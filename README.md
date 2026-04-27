@@ -24,7 +24,7 @@ NL Prompt → Stage 1 (Intent) → Stage 2 (Design) → Stage 3 (4× Parallel Ge
 
 - **Backend**: FastAPI + Pydantic v2 + SQLAlchemy (sync SQLite)
 - **Frontend**: Next.js 14 + Tailwind CSS + TypeScript
-- **LLM**: Anthropic Claude / OpenAI GPT-4o (unified client)
+- **LLM**: GroqCloud Llama3-70b / OpenAI GPT-4o (unified client)
 - **Validation**: 10 cross-layer consistency rules (CL-001 → CL-010)
 - **Repair**: Surgical per-layer repair with MD5 oscillation detection
 
@@ -36,7 +36,7 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env  # Add your ANTHROPIC_API_KEY
+cp .env.example .env  # Add your GROQ_API_KEY
 uvicorn app.main:app --port 8000 --reload
 
 # Frontend
