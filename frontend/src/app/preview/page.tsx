@@ -37,7 +37,7 @@ export default function PreviewPage() {
     if (key === 'intent_ir') return result.intent_ir;
     if (key === 'system_design_ir') return result.system_design_ir;
     if (result.app_config) {
-      const config = result.app_config as Record<string, unknown>;
+      const config = result.app_config as unknown as Record<string, unknown>;
       return config[key];
     }
     return null;
