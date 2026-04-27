@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Generator
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker, DeclarativeBase
 
@@ -21,7 +23,7 @@ class Base(DeclarativeBase):
     pass
 
 
-def get_db() -> Session:
+def get_db() -> Generator[Session, None, None]:
     """Dependency that yields a database session."""
     db = SessionLocal()
     try:

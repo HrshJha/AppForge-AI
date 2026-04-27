@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { CompileResponse, UIComponent, UIPage } from '@/lib/types';
 
 const TABS = ['Intent IR', 'System Design', 'DB Schema', 'API Schema', 'UI Schema', 'Auth Schema'];
-const TAB_KEYS = ['intent_ir', 'system_design_ir', 'db', 'api', 'ui', 'auth'];
+const TAB_KEYS = ['intent_ir', 'system_design_ir', 'db', 'api', 'ui', 'auth'] as const;
 
 export default function PreviewPage() {
   const [result, setResult] = useState<CompileResponse | null>(null);
@@ -14,7 +14,11 @@ export default function PreviewPage() {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('appforge_result');
       if (stored) {
-        try { setResult(JSON.parse(stored)); } catch {}
+        try {
+          setResult(JSON.parse(stored));
+        } catch (_e) {
+          // Ignore parse errors from corrupt localStorage
+        }
       }
     }
   }, []);
@@ -28,12 +32,13 @@ export default function PreviewPage() {
     );
   }
 
-  const getTabData = () => {
+  const getTabData = (): unknown => {
     const key = TAB_KEYS[activeTab];
     if (key === 'intent_ir') return result.intent_ir;
     if (key === 'system_design_ir') return result.system_design_ir;
     if (result.app_config) {
-      return (result.app_config as any)[key];
+      const config = result.app_config as Record<string, unknown>;
+      return config[key];
     }
     return null;
   };
@@ -84,8 +89,8 @@ export default function PreviewPage() {
           <h3 className="text-sm font-medium text-gray-700 mb-2">Validation Log</h3>
           {result.validation_errors && result.validation_errors.length > 0 ? (
             <ul className="space-y-1 text-xs font-mono">
-              {result.validation_errors.map((err: any, i: number) => (
-                <li key={i} className="text-red-600">• {typeof err === 'string' ? err : err.message || JSON.stringify(err)}</li>
+              {result.validation_errors.map((err: Record<string, unknown>, i: number) => (
+                <li key={i} className="text-red-600">• {typeof err === 'string' ? err : (err.message as string) ?? JSON.stringify(err)}</li>
               ))}
             </ul>
           ) : (
@@ -98,9 +103,9 @@ export default function PreviewPage() {
           <h3 className="text-sm font-medium text-gray-700 mb-2">Repair Log</h3>
           {result.repair_log && result.repair_log.length > 0 ? (
             <ul className="space-y-1 text-xs font-mono">
-              {result.repair_log.map((action: any, i: number) => (
+              {result.repair_log.map((action: Record<string, unknown>, i: number) => (
                 <li key={i} className={action.success ? 'text-green-600' : 'text-yellow-600'}>
-                  Pass {action.pass_number} [{action.layer}]: {action.success ? '✓ Fixed' : '⚠ Attempted'}
+                  Pass {action.pass_number as number} [{action.layer as string}]: {action.success ? '✓ Fixed' : '⚠ Attempted'}
                 </li>
               ))}
             </ul>

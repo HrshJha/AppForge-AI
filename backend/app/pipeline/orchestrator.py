@@ -228,7 +228,7 @@ async def run_pipeline(prompt: str) -> CompileResponse:
             execution_report=execution_report,
             intent_ir=intent_ir.model_dump(),
             system_design_ir=design_ir.model_dump(),
-            validation_errors=[v.model_dump() for v in repair_report.actions[0].errors_before] if repair_report.actions else [],
+            validation_errors=[{"message": e} for e in repair_report.actions[0].errors_before] if repair_report.actions else [],
             repair_log=[a.model_dump() for a in repair_report.actions],
             metrics=pipeline_metrics.model_dump(),
         )

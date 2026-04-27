@@ -13,20 +13,29 @@ export async function compileApp(prompt: string): Promise<CompileResponse> {
     body: JSON.stringify({ prompt }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
+    const err: { detail?: string } = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail ?? `HTTP ${res.status}`);
   }
-  return res.json();
+  return res.json() as Promise<CompileResponse>;
 }
 
-export async function getMetrics(): Promise<any> {
+interface PipelineMetrics {
+  total_compiles: number;
+  success_count: number;
+  success_rate: number;
+  avg_latency_ms: number;
+  avg_repair_count: number;
+  avg_cost_usd: number;
+}
+
+export async function getMetrics(): Promise<PipelineMetrics> {
   const res = await fetch(`${API_BASE}/metrics`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return res.json() as Promise<PipelineMetrics>;
 }
 
 export async function healthCheck(): Promise<{ status: string }> {
   const res = await fetch(`${API_BASE}/health`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return res.json() as Promise<{ status: string }>;
 }

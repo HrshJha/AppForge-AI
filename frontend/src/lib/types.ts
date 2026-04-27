@@ -71,7 +71,7 @@ export interface APISchema {
 
 export interface UIComponent {
   type: string;
-  props: Record<string, any>;
+  props: Record<string, unknown>;
   data_source: string | null;
 }
 
@@ -88,6 +88,17 @@ export interface UISchema {
   pages: UIPage[];
 }
 
+export interface RolePermission {
+  role: string;
+  permissions: string[];
+}
+
+export interface AuthGuard {
+  name: string;
+  required_roles: string[];
+  redirect: string;
+}
+
 export interface AuthSchema {
   strategy: string;
   token_expiry: string;
@@ -95,8 +106,8 @@ export interface AuthSchema {
   password_storage: string;
   rate_limit_enabled: boolean;
   roles: string[];
-  permissions: { role: string; permissions: string[] }[];
-  guards: { name: string; required_roles: string[]; redirect: string }[];
+  permissions: RolePermission[];
+  guards: AuthGuard[];
 }
 
 export interface ExecutionCheck {
@@ -114,14 +125,30 @@ export interface ExecutionReport {
   overall_pass: boolean;
 }
 
+export interface DomainEntity {
+  name: string;
+  fields: Record<string, unknown>[];
+}
+
 export interface ValidatedAppConfig {
   metadata: { app_name: string; version: string; assumptions: string[] };
-  domain: { entities: { name: string; fields: any[] }[] };
+  domain: { entities: DomainEntity[] };
   auth: AuthSchema;
   db: DBSchema;
   api: APISchema;
   ui: UISchema;
-  logic: { rules: any[] };
+  logic: { rules: Record<string, unknown>[] };
+}
+
+export interface CompileMetrics {
+  total_latency_ms?: number;
+  latency_ms?: number;
+  total_cost_usd?: number;
+  repair_count?: number;
+  consistency_score?: number;
+  assumption_count?: number;
+  error?: string;
+  [key: string]: unknown;
 }
 
 export interface CompileResponse {
@@ -129,10 +156,10 @@ export interface CompileResponse {
   status: string;
   app_config: ValidatedAppConfig | null;
   execution_report: ExecutionReport | null;
-  intent_ir: any | null;
-  system_design_ir: any | null;
-  validation_errors: any[];
-  repair_log: any[];
-  metrics: any;
+  intent_ir: Record<string, unknown> | null;
+  system_design_ir: Record<string, unknown> | null;
+  validation_errors: Record<string, unknown>[];
+  repair_log: Record<string, unknown>[];
+  metrics: CompileMetrics;
   clarifications_needed: string[];
 }

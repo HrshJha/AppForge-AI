@@ -10,7 +10,6 @@ Features:
 
 from __future__ import annotations
 
-import json
 import time
 import logging
 from typing import Any
@@ -23,13 +22,13 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Cost per 1M tokens (approximate, for tracking only)
 # ---------------------------------------------------------------------------
-COST_TABLE = {
+COST_TABLE: dict[str, dict[str, float]] = {
     "anthropic": {"input": 3.0, "output": 15.0},  # Claude Sonnet
     "openai": {"input": 2.5, "output": 10.0},  # GPT-4o
 }
 
 # Token budget per stage
-TOKEN_BUDGETS = {
+TOKEN_BUDGETS: dict[str, int] = {
     "stage1_intent": 500,
     "stage2_design": 1500,
     "stage3_db": 1200,
@@ -52,7 +51,7 @@ class LLMResponse:
         latency_ms: int,
         cost_usd: float,
         was_repaired: bool = False,
-    ):
+    ) -> None:
         self.content = content
         self.parsed = parsed
         self.input_tokens = input_tokens
@@ -65,15 +64,17 @@ class LLMResponse:
 class LLMClient:
     """Unified client for Anthropic/OpenAI with JSON mode and retry logic."""
 
-    def __init__(self, provider: str | None = None):
-        self.provider = provider or settings.LLM_PROVIDER
+    def __init__(self, provider: str | None = None) -> None:
+        self.provider: str = provider or settings.LLM_PROVIDER
+        self._anthropic_client: Any = None
+        self._openai_client: Any = None
 
         if self.provider == "anthropic":
-            import anthropic
-            self._anthropic = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+            import anthropic  # type: ignore[import-untyped]
+            self._anthropic_client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         elif self.provider == "openai":
-            import openai
-            self._openai = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+            import openai  # type: ignore[import-untyped]
+            self._openai_client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
         else:
             raise ValueError(f"Unknown LLM provider: {self.provider}")
 
@@ -94,31 +95,33 @@ class LLMClient:
             LLMResponse with parsed JSON and metadata.
         """
         max_tokens = TOKEN_BUDGETS.get(stage, 1500)
-        last_error = None
+        last_error: Exception | None = None
 
         for attempt in range(max_retries + 1):
             try:
                 start = time.time()
 
                 if self.provider == "anthropic":
-                    content, input_tok, output_tok = await self._call_anthropic(
+                    content, input_tok, output_tok = self._call_anthropic(
                         prompt, max_tokens
                     )
                 else:
-                    content, input_tok, output_tok = await self._call_openai(
+                    content, input_tok, output_tok = self._call_openai(
                         prompt, max_tokens
                     )
 
                 latency_ms = int((time.time() - start) * 1000)
 
                 # Calculate cost
-                cost_rates = COST_TABLE.get(self.provider, {"input": 0, "output": 0})
+                cost_rates = COST_TABLE.get(self.provider, {"input": 0.0, "output": 0.0})
                 cost_usd = (
                     (input_tok * cost_rates["input"] / 1_000_000)
                     + (output_tok * cost_rates["output"] / 1_000_000)
                 )
 
                 # Parse JSON (with repair)
+                parsed: dict[str, Any] | None = None
+                was_repaired = False
                 try:
                     parsed, was_repaired = repair_json(content)
                 except ValueError:
@@ -149,26 +152,30 @@ class LLMClient:
             f"LLM call failed after {max_retries + 1} attempts: {last_error}"
         )
 
-    async def _call_anthropic(
+    def _call_anthropic(
         self, prompt: str, max_tokens: int
     ) -> tuple[str, int, int]:
         """Call Anthropic Claude API."""
-        response = self._anthropic.messages.create(
+        if self._anthropic_client is None:
+            raise RuntimeError("Anthropic client not initialized")
+        response = self._anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=max_tokens,
             temperature=0,
             messages=[{"role": "user", "content": prompt}],
         )
-        content = response.content[0].text
-        input_tok = response.usage.input_tokens
-        output_tok = response.usage.output_tokens
+        content: str = response.content[0].text
+        input_tok: int = response.usage.input_tokens
+        output_tok: int = response.usage.output_tokens
         return content, input_tok, output_tok
 
-    async def _call_openai(
+    def _call_openai(
         self, prompt: str, max_tokens: int
     ) -> tuple[str, int, int]:
         """Call OpenAI API with JSON mode."""
-        response = self._openai.chat.completions.create(
+        if self._openai_client is None:
+            raise RuntimeError("OpenAI client not initialized")
+        response = self._openai_client.chat.completions.create(
             model="gpt-4o",
             max_tokens=max_tokens,
             temperature=0,
@@ -178,9 +185,10 @@ class LLMClient:
                 {"role": "user", "content": prompt},
             ],
         )
-        content = response.choices[0].message.content
-        input_tok = response.usage.prompt_tokens
-        output_tok = response.usage.completion_tokens
+        content: str = response.choices[0].message.content or ""
+        usage = response.usage
+        input_tok: int = usage.prompt_tokens if usage else 0
+        output_tok: int = usage.completion_tokens if usage else 0
         return content, input_tok, output_tok
 
 

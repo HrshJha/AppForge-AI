@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.schemas.common import ValidationViolation
+from app.schemas.common import ValidationViolation, Severity
 from app.schemas.app_config import ValidatedAppConfig
 from app.validation.json_repair import repair_json
 from app.validation.rules import validate_all, compute_consistency_score
@@ -49,7 +49,7 @@ def validate_app_config(
                     rule_id="JSON-REPAIR-FAIL",
                     layer="json",
                     message=f"JSON repair failed: {str(e)}",
-                    severity="error",
+                    severity=Severity.ERROR,
                 )
             )
             return None, report
@@ -61,7 +61,7 @@ def validate_app_config(
     report.violations = violations
 
     # Determine pass status
-    error_violations = [v for v in violations if v.severity == "error"]
+    error_violations = [v for v in violations if v.severity == Severity.ERROR]
     structural_errors = [v for v in error_violations if v.rule_id.startswith("STRUCT")]
     cross_layer_errors = [v for v in error_violations if v.rule_id.startswith("CL-")]
 

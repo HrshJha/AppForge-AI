@@ -35,8 +35,9 @@ export default function Home() {
       clearInterval(stageInterval);
       setCurrentStage(5);
       setResult(data);
-    } catch (err: any) {
-      setError(err.message || 'Compile failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Compile failed';
+      setError(message);
       setCurrentStage(0);
     } finally {
       setLoading(false);
@@ -137,10 +138,10 @@ export default function Home() {
         {result ? (
           <div className="space-y-3">
             <Metric label="Status" value={result.status} />
-            <Metric label="Latency" value={`${result.metrics?.total_latency_ms || result.metrics?.latency_ms || 0}ms`} />
-            <Metric label="Repairs" value={String(result.metrics?.repair_count || 0)} />
-            <Metric label="Cost" value={`$${result.metrics?.total_cost_usd?.toFixed(4) || '0.0000'}`} />
-            <Metric label="Assumptions" value={String(result.metrics?.assumption_count || 0)} />
+            <Metric label="Latency" value={`${result.metrics?.total_latency_ms ?? result.metrics?.latency_ms ?? 0}ms`} />
+            <Metric label="Repairs" value={String(result.metrics?.repair_count ?? 0)} />
+            <Metric label="Cost" value={`$${(result.metrics?.total_cost_usd ?? 0).toFixed(4)}`} />
+            <Metric label="Assumptions" value={String(result.metrics?.assumption_count ?? 0)} />
             {result.execution_report && (
               <>
                 <hr className="border-gray-200" />

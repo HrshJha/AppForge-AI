@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from app.schemas.common import Severity
 
 router = APIRouter()
 
@@ -16,7 +18,7 @@ class ValidateRequest(BaseModel):
 class ValidateResponse(BaseModel):
     """Validation result."""
     valid: bool
-    errors: list[dict] = []
+    errors: list[dict] = Field(default_factory=list)
     consistency_score: float = 0.0
 
 
@@ -28,7 +30,7 @@ async def validate(req: ValidateRequest):
     violations = validate_all(req.app_config)
     error_dicts = [v.model_dump() for v in violations]
     total_rules = 10  # number of cross-layer rules
-    passing = total_rules - len([e for e in violations if e.severity == "error"])
+    passing = total_rules - len([e for e in violations if e.severity == Severity.ERROR])
     score = max(0.0, passing / total_rules) if total_rules > 0 else 0.0
 
     return ValidateResponse(

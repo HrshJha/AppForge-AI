@@ -3,15 +3,24 @@
 import { useEffect, useState } from 'react';
 import { getMetrics } from '@/lib/api';
 
+interface PipelineMetricsData {
+  total_compiles: number;
+  success_count: number;
+  success_rate: number;
+  avg_latency_ms: number;
+  avg_repair_count: number;
+  avg_cost_usd: number;
+}
+
 export default function MetricsPage() {
-  const [metrics, setMetrics] = useState<any>(null);
+  const [metrics, setMetrics] = useState<PipelineMetricsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     getMetrics()
-      .then(setMetrics)
-      .catch((e) => setError(e.message))
+      .then((data: PipelineMetricsData) => setMetrics(data))
+      .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -23,10 +32,10 @@ export default function MetricsPage() {
       <h2 className="text-lg font-bold mb-4">Pipeline Metrics</h2>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <MetricCard label="Total Compiles" value={metrics?.total_compiles || 0} />
-        <MetricCard label="Success Rate" value={`${((metrics?.success_rate || 0) * 100).toFixed(0)}%`} />
-        <MetricCard label="Avg Latency" value={`${Math.round(metrics?.avg_latency_ms || 0)}ms`} />
-        <MetricCard label="Avg Repairs" value={(metrics?.avg_repair_count || 0).toFixed(1)} />
+        <MetricCard label="Total Compiles" value={metrics?.total_compiles ?? 0} />
+        <MetricCard label="Success Rate" value={`${((metrics?.success_rate ?? 0) * 100).toFixed(0)}%`} />
+        <MetricCard label="Avg Latency" value={`${Math.round(metrics?.avg_latency_ms ?? 0)}ms`} />
+        <MetricCard label="Avg Repairs" value={(metrics?.avg_repair_count ?? 0).toFixed(1)} />
       </div>
 
       <div className="border border-gray-200 rounded-lg p-4">

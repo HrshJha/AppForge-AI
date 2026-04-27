@@ -15,7 +15,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.schemas.common import ValidationViolation
+from app.schemas.common import ValidationViolation, Severity
 from app.pipeline.stage4_validator import validate_app_config, ValidationReport
 
 
@@ -100,7 +100,7 @@ async def run_repair_loop(
 
         # Group errors by layer
         error_violations = [
-            v for v in validation_report.violations if v.severity == "error"
+            v for v in validation_report.violations if v.severity == Severity.ERROR
         ]
         if not error_violations:
             report.final_valid = True
