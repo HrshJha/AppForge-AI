@@ -8,6 +8,10 @@ const nextConfig = {
       },
     ];
   },
+  // Increase proxy timeout for long-running pipeline requests
+  experimental: {
+    proxyTimeout: 120000, // 2 minutes
+  },
 };
 
 module.exports = nextConfig;
