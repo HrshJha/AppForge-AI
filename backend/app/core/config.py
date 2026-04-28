@@ -25,7 +25,10 @@ class Settings(BaseSettings):
     # --- Application ---
     DEBUG: bool = True
     API_V1_PREFIX: str = "/api/v1"
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "https://app-forge-ai-chi.vercel.app",
+    ]
 
     # --- Pipeline ---
     MAX_PROMPT_LENGTH: int = 2000
