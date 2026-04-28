@@ -163,7 +163,7 @@ class LLMClient:
         if self._groq_client is None:
             raise RuntimeError("Groq client not initialized")
         response = self._groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile",
             max_tokens=max_tokens,
             temperature=0,
             response_format={"type": "json_object"},
