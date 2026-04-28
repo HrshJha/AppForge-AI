@@ -86,7 +86,7 @@ class LLMClient:
         self,
         prompt: str,
         stage: str = "default",
-        max_retries: int = 4,
+        max_retries: int = 6,
     ) -> LLMResponse:
         """Generate a JSON response from the LLM.
 
@@ -145,7 +145,14 @@ class LLMClient:
             except Exception as e:
                 last_error = e
                 if attempt < max_retries:
-                    wait = 3 ** attempt  # Exponential backoff: 1s, 3s, 9s, 27s
+                    wait = float(3 ** attempt)  # Exponential backoff: 1s, 3s, 9s, 27s
+                    
+                    import re
+                    err_str = str(e)
+                    match = re.search(r"try again in ([\d\.]+)s", err_str)
+                    if match:
+                        wait = float(match.group(1)) + 1.0
+                        
                     logger.warning(
                         f"LLM call failed (attempt {attempt + 1}/{max_retries + 1}), "
                         f"retrying in {wait}s: {e}"
