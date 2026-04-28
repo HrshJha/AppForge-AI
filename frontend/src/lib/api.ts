@@ -1,13 +1,15 @@
 /**
  * API client — typed fetch wrapper for the backend.
+ * BASE_URL reads from NEXT_PUBLIC_API_URL at build time (set in Railway Variables).
+ * Falls back to empty string so Next.js rewrites handle local dev proxying.
  */
 
 import { CompileResponse } from './types';
 
-const API_BASE = 'http://localhost:8000/api/v1';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export async function compileApp(prompt: string): Promise<CompileResponse> {
-  const res = await fetch(`${API_BASE}/generate`, {
+  const res = await fetch(`${BASE_URL}/api/v1/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt }),
@@ -29,13 +31,13 @@ interface PipelineMetrics {
 }
 
 export async function getMetrics(): Promise<PipelineMetrics> {
-  const res = await fetch(`${API_BASE}/metrics`);
+  const res = await fetch(`${BASE_URL}/api/v1/metrics`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<PipelineMetrics>;
 }
 
 export async function healthCheck(): Promise<{ status: string }> {
-  const res = await fetch(`${API_BASE}/health`);
+  const res = await fetch(`${BASE_URL}/api/v1/health`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<{ status: string }>;
 }
