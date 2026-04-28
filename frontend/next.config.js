@@ -1,18 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async rewrites() {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ];
+  output: 'standalone',
+  images: {
+    unoptimized: true,
   },
-  // Increase proxy timeout for long-running pipeline requests
-  experimental: {
-    proxyTimeout: 120000, // 2 minutes
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',
   },
+  poweredByHeader: false,
 };
 
 module.exports = nextConfig;
