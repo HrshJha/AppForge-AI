@@ -115,14 +115,7 @@ async def generate_all_schemas(
             metrics.append(stage_metrics)
         except Exception as e:
             logger.error(f"Stage 3 {layer} generator failed: {e}")
-            schemas[layer] = {}
-            metrics.append(
-                StageMetrics(
-                    stage=stage_key,
-                    success=False,
-                    error=str(e),
-                )
-            )
+            raise SchemaGenerationError(layer, str(e)) from e
 
         # Pause between calls to stay within Groq TPM window
         if i < len(stage_keys) - 1:

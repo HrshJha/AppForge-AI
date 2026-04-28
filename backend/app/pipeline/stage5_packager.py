@@ -524,11 +524,14 @@ def generate_execution_report(config: ValidatedAppConfig) -> ExecutionReport:
     """
     config_dict = config.model_dump()
 
-    # Run all 4 boot checks (read-only — don't mutate the validated config)
-    db_result = _repair_db(copy.deepcopy(config_dict))
-    api_result = _repair_api(copy.deepcopy(config_dict))
-    ui_result = _repair_ui(copy.deepcopy(config_dict))
-    auth_result = _repair_auth(copy.deepcopy(config_dict))
+    # Run boot repair first to fix any minor typings (like string -> TEXT)
+    repaired_dict, _ = run_boot_repair(copy.deepcopy(config_dict))
+
+    # Now run all 4 boot checks on the repaired version
+    db_result = _repair_db(copy.deepcopy(repaired_dict))
+    api_result = _repair_api(copy.deepcopy(repaired_dict))
+    ui_result = _repair_ui(copy.deepcopy(repaired_dict))
+    auth_result = _repair_auth(copy.deepcopy(repaired_dict))
 
     overall = all([
         db_result.passed, api_result.passed,
