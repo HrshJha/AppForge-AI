@@ -143,13 +143,10 @@ async def run_pipeline(prompt: str) -> CompileResponse:
         all_metrics.append(s2_metrics)
         assumptions.extend(design_ir.assumptions)
 
-        # Small pause so Stage 3 parallel calls don't share the TPM window with Stage 2
-        await asyncio.sleep(3)
-
         # ============================================================
-        # Stage 3: Parallel Schema Generation
+        # Stage 3: Sequential Schema Generation
         # ============================================================
-        logger.info("Stage 3: Parallel Schema Generation")
+        logger.info("Stage 3: Sequential Schema Generation")
         raw_bundle = await generate_all_schemas(design_ir)
         all_metrics.extend(raw_bundle.metrics)
 

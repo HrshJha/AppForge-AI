@@ -21,6 +21,8 @@ def check_api_entities_in_domain(config: ValidatedAppConfig) -> list[ValidationV
     domain_names = {e.name for e in config.domain.entities}
 
     for resource in config.api.resources:
+        if resource.entity is None:
+            continue  # Non-entity resources (e.g., auth) are fine
         if resource.entity not in domain_names:
             violations.append(
                 ValidationViolation(

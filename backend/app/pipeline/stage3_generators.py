@@ -87,7 +87,9 @@ async def _generate_layer(
 async def generate_all_schemas(
     system_design_ir: SystemDesignIR,
 ) -> RawSchemaBundle:
-    """Run all 4 schema generators in parallel.
+    """Run all 4 schema generators sequentially with pauses.
+
+    Sequential execution avoids exceeding Groq free-tier TPM limits.
 
     Args:
         system_design_ir: The canonical source of truth from Stage 2.
@@ -95,37 +97,36 @@ async def generate_all_schemas(
     Returns:
         RawSchemaBundle containing all 4 generated schemas (unvalidated).
     """
-    logger.info("Stage 3: Launching 4 parallel schema generators...")
+    logger.info("Stage 3: Running 4 schema generators sequentially...")
 
-    # Run all 4 concurrently
-    results = await asyncio.gather(
-        _generate_layer("stage3_db", system_design_ir),
-        _generate_layer("stage3_api", system_design_ir),
-        _generate_layer("stage3_ui", system_design_ir),
-        _generate_layer("stage3_auth", system_design_ir),
-        return_exceptions=True,
-    )
+    schemas: dict[str, dict] = {}
+    metrics: list[StageMetrics] = []
+    stage_keys = [
+        ("db", "stage3_db"),
+        ("api", "stage3_api"),
+        ("ui", "stage3_ui"),
+        ("auth", "stage3_auth"),
+    ]
 
-    # Unpack results
-    schemas = {}
-    metrics = []
-    layers = ["db", "api", "ui", "auth"]
-
-    for i, (layer, result) in enumerate(zip(layers, results)):
-        if isinstance(result, Exception):
-            logger.error(f"Stage 3 {layer} generator failed: {result}")
+    for i, (layer, stage_key) in enumerate(stage_keys):
+        try:
+            schema_dict, stage_metrics = await _generate_layer(stage_key, system_design_ir)
+            schemas[layer] = schema_dict
+            metrics.append(stage_metrics)
+        except Exception as e:
+            logger.error(f"Stage 3 {layer} generator failed: {e}")
             schemas[layer] = {}
             metrics.append(
                 StageMetrics(
-                    stage=f"stage3_{layer}",
+                    stage=stage_key,
                     success=False,
-                    error=str(result),
+                    error=str(e),
                 )
             )
-        else:
-            schema_dict, stage_metrics = result
-            schemas[layer] = schema_dict
-            metrics.append(stage_metrics)
+
+        # Pause between calls to stay within Groq TPM window
+        if i < len(stage_keys) - 1:
+            await asyncio.sleep(3)
 
     logger.info(
         f"Stage 3 complete: "

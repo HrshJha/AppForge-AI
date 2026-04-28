@@ -10,6 +10,7 @@ Features:
 
 from __future__ import annotations
 
+import asyncio
 import time
 import logging
 from typing import Any
@@ -149,7 +150,7 @@ class LLMClient:
                         f"LLM call failed (attempt {attempt + 1}/{max_retries + 1}), "
                         f"retrying in {wait}s: {e}"
                     )
-                    time.sleep(wait)
+                    await asyncio.sleep(wait)
 
         raise RuntimeError(
             f"LLM call failed after {max_retries + 1} attempts: {last_error}"

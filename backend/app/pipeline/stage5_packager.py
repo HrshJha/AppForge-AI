@@ -363,8 +363,10 @@ def _cross_check(config_dict: dict[str, Any]) -> BootCheckResult:
     # 2. API resource entities must exist in domain
     domain_entity_names = {e.get("name", "") for e in domain.get("entities", [])}
     for resource in api.get("resources", []):
-        entity = resource.get("entity", "")
-        if entity and entity not in domain_entity_names:
+        entity = resource.get("entity")
+        if not entity:
+            continue  # Non-entity resources (e.g., auth) are fine
+        if entity not in domain_entity_names:
             result.fixes.append(
                 f"CROSS: API resource '{resource.get('name')}' references entity "
                 f"'{entity}' not in domain — adding stub entity"
