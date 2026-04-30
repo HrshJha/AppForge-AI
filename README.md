@@ -387,7 +387,7 @@ copies or substantial portions of the Software.
 <div align="center">
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:2d0b5a,50:6b21a8,100:a855f7&height=130&section=footer&animation=fadeIn" width="100%"/>
 
-**Made with ❤️ by Harsh Kumar Jha**
+**Made with 💖 by Harsh Kumar Jha**
 
 *"Stop hallucinating. Start compiling."*
 </div>
