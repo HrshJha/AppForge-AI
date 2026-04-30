@@ -175,13 +175,21 @@ class LLMClient:
 
         # If the model was cut off, the JSON is almost certainly incomplete
         if finish_reason != "stop":
+            # Try repair before giving up
             logger.warning(
                 f"Groq response truncated (finish_reason={finish_reason}, "
-                f"content_len={len(content)}). Will retry."
+                f"content_len={len(content)}). Attempting repair before retry."
             )
+            try:
+                repaired, _ = repair_json(content)
+                if repaired:
+                    logger.info("Truncated response repaired successfully — skipping retry.")
+                    return content, usage.prompt_tokens if usage else 0, usage.completion_tokens if usage else 0
+            except Exception:
+                pass
             raise RuntimeError(
                 f"Groq response truncated: finish_reason={finish_reason}"
-            )
+    )
 
         usage = response.usage
         input_tok: int = usage.prompt_tokens if usage else 0
