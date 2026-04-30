@@ -192,6 +192,7 @@ async def run_pipeline(prompt: str) -> CompileResponse:
         # Stage 5: Execution Packager (Boot Repair)
         # ============================================================
         logger.info("Stage 5: Execution Packager (Boot Repair)")
+        logger.info(f"[STAGE 5] Starting — input received: {json.dumps(repaired_config)[:200]}")
         s5_start = time.time()
 
         # 5a: Run boot repair on raw dict (fixes types, PKs, paths, etc.)
@@ -204,6 +205,7 @@ async def run_pipeline(prompt: str) -> CompileResponse:
         try:
             validated_config = ValidatedAppConfig.model_validate(boot_repaired_config)
             execution_report = generate_execution_report(validated_config)
+            logger.info(f"[STAGE 5] Completed successfully — output: {str(execution_report)[:200]}")
         except Exception as e:
             logger.error(f"Stage 5 failed to parse config after boot repair: {e}")
             execution_report = None
