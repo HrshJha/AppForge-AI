@@ -86,51 +86,39 @@ class LLMClient:
         self,
         prompt: str,
         stage: str = "default",
-        max_retries: int = 6,
+        max_retries: int = 2,
     ) -> LLMResponse:
-        """Generate a JSON response from the LLM.
-
-        Args:
-            prompt: The full prompt string (system + user content combined).
-            stage: Pipeline stage name (for token budget enforcement).
-            max_retries: Max retry attempts on failure.
-
-        Returns:
-            LLMResponse with parsed JSON and metadata.
-        """
         max_tokens = TOKEN_BUDGETS.get(stage, 1500)
         last_error: Exception | None = None
+        loop = asyncio.get_event_loop()
 
         for attempt in range(max_retries + 1):
             try:
                 start = time.time()
 
                 if self.provider == "groq":
-                    content, input_tok, output_tok = self._call_groq(
-                        prompt, max_tokens
+                    content, input_tok, output_tok = await loop.run_in_executor(
+                        None, self._call_groq, prompt, max_tokens
                     )
                 else:
-                    content, input_tok, output_tok = self._call_openai(
-                        prompt, max_tokens
+                    content, input_tok, output_tok = await loop.run_in_executor(
+                        None, self._call_openai, prompt, max_tokens
                     )
 
                 latency_ms = int((time.time() - start) * 1000)
 
-                # Calculate cost
                 cost_rates = COST_TABLE.get(self.provider, {"input": 0.0, "output": 0.0})
                 cost_usd = (
                     (input_tok * cost_rates["input"] / 1_000_000)
                     + (output_tok * cost_rates["output"] / 1_000_000)
                 )
 
-                # Parse JSON (with repair)
                 parsed: dict[str, Any] | None = None
                 was_repaired = False
                 try:
                     parsed, was_repaired = repair_json(content)
                 except ValueError:
                     parsed = None
-                    was_repaired = False
 
                 return LLMResponse(
                     content=content,
@@ -142,20 +130,23 @@ class LLMClient:
                     was_repaired=was_repaired,
                 )
 
+            except asyncio.CancelledError:
+                raise
+
             except Exception as e:
                 last_error = e
                 if attempt < max_retries:
-                    wait = float(3 ** attempt)  # Exponential backoff: 1s, 3s, 9s, 27s
-                    
                     import re
                     err_str = str(e)
                     match = re.search(r"try again in ([\d\.]+)s", err_str)
                     if match:
-                        wait = float(match.group(1)) + 1.0
-                        
+                        wait = min(float(match.group(1)) + 1.0, 15.0)
+                    else:
+                        wait = min(float(3 ** attempt), 10.0)
+
                     logger.warning(
                         f"LLM call failed (attempt {attempt + 1}/{max_retries + 1}), "
-                        f"retrying in {wait}s: {e}"
+                        f"retrying in {wait:.1f}s: {e}"
                     )
                     await asyncio.sleep(wait)
 
