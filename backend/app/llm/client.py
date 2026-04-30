@@ -204,7 +204,7 @@ class LLMClient:
         if self._openai_client is None:
             raise RuntimeError("OpenAI client not initialized")
         response = self._openai_client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             max_tokens=max_tokens,
             temperature=0,
             response_format={"type": "json_object"},
