@@ -5,7 +5,11 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+import logging
+
 from app.schemas.app_config import CompileResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -23,6 +27,16 @@ async def generate(req: GenerateRequest):
 
     # Import here to avoid circular imports during module loading
     from app.pipeline.orchestrator import run_pipeline
+    import asyncio
 
-    result = await run_pipeline(req.prompt.strip())
-    return result
+    try:
+        # Railway free tier cuts off at 60s, so we timeout at 55s
+        # to ensure we return a clean JSON response with CORS headers.
+        result = await asyncio.wait_for(run_pipeline(req.prompt.strip()), timeout=55.0)
+        return result
+    except asyncio.TimeoutError:
+        logger.error(f"Pipeline timed out after 55 seconds for prompt: {req.prompt[:50]}")
+        raise HTTPException(
+            status_code=504,
+            detail="Pipeline execution timed out (Railway 60s limit). Please try a simpler prompt or run locally."
+        )
