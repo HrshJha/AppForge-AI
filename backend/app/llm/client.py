@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 # Cost per 1M tokens (approximate, for tracking only)
 # ---------------------------------------------------------------------------
 COST_TABLE: dict[str, dict[str, float]] = {
-    "groq": {"input": 0.59, "output": 0.79},  # Llama3-70b on GroqCloud
-    "openai": {"input": 2.5, "output": 10.0},  # GPT-4o
+    "groq": {"input": 0.59, "output": 0.79},
+    "openai": {"input": 2.5, "output": 10.0},
 }
 
 # Token budget per stage
@@ -154,7 +154,7 @@ class LLMClient:
             f"LLM call failed after {max_retries + 1} attempts: {last_error}"
         )
 
-def _call_groq(
+    def _call_groq(
         self, prompt: str, max_tokens: int
     ) -> tuple[str, int, int]:
         """Call GroqCloud API (OpenAI-compatible)."""
@@ -172,7 +172,7 @@ def _call_groq(
         )
         content: str = response.choices[0].message.content or ""
         finish_reason = response.choices[0].finish_reason
-        usage = response.usage  # ← moved up before the finish_reason check
+        usage = response.usage
         input_tok: int = usage.prompt_tokens if usage else 0
         output_tok: int = usage.completion_tokens if usage else 0
 
@@ -194,10 +194,10 @@ def _call_groq(
 
         return content, input_tok, output_tok
 
-        def _call_openai(
+    def _call_openai(
         self, prompt: str, max_tokens: int
     ) -> tuple[str, int, int]:
-         """Call OpenAI API with JSON mode."""
+        """Call OpenAI API with JSON mode."""
         if self._openai_client is None:
             raise RuntimeError("OpenAI client not initialized")
         response = self._openai_client.chat.completions.create(
