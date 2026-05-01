@@ -32,9 +32,9 @@ COST_TABLE: dict[str, dict[str, float]] = {
 TOKEN_BUDGETS: dict[str, int] = {
     "stage1_intent": 800,
     "stage2_design": 2000,
-    "stage3_db": 1500,
-    "stage3_api": 2500,   # ← was 1200, API schema is the largest output
-    "stage3_ui": 1500,
+    "stage3_db": 3000,    # ← was 1500
+    "stage3_api": 2500,
+    "stage3_ui": 2000,    # ← was 1500, UI also grows with complexity
     "stage3_auth": 800,
     "stage4_repair": 1000,
 }
