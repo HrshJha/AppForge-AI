@@ -154,7 +154,7 @@ class LLMClient:
             f"LLM call failed after {max_retries + 1} attempts: {last_error}"
         )
 
-    def _call_groq(
+def _call_groq(
         self, prompt: str, max_tokens: int
     ) -> tuple[str, int, int]:
         """Call GroqCloud API (OpenAI-compatible)."""
@@ -172,10 +172,11 @@ class LLMClient:
         )
         content: str = response.choices[0].message.content or ""
         finish_reason = response.choices[0].finish_reason
+        usage = response.usage  # ← moved up before the finish_reason check
+        input_tok: int = usage.prompt_tokens if usage else 0
+        output_tok: int = usage.completion_tokens if usage else 0
 
-        # If the model was cut off, the JSON is almost certainly incomplete
         if finish_reason != "stop":
-            # Try repair before giving up
             logger.warning(
                 f"Groq response truncated (finish_reason={finish_reason}, "
                 f"content_len={len(content)}). Attempting repair before retry."
@@ -184,22 +185,19 @@ class LLMClient:
                 repaired, _ = repair_json(content)
                 if repaired:
                     logger.info("Truncated response repaired successfully — skipping retry.")
-                    return content, usage.prompt_tokens if usage else 0, usage.completion_tokens if usage else 0
+                    return content, input_tok, output_tok
             except Exception:
                 pass
             raise RuntimeError(
                 f"Groq response truncated: finish_reason={finish_reason}"
-    )
+            )
 
-        usage = response.usage
-        input_tok: int = usage.prompt_tokens if usage else 0
-        output_tok: int = usage.completion_tokens if usage else 0
         return content, input_tok, output_tok
 
-    def _call_openai(
+        def _call_openai(
         self, prompt: str, max_tokens: int
     ) -> tuple[str, int, int]:
-        """Call OpenAI API with JSON mode."""
+         """Call OpenAI API with JSON mode."""
         if self._openai_client is None:
             raise RuntimeError("OpenAI client not initialized")
         response = self._openai_client.chat.completions.create(
