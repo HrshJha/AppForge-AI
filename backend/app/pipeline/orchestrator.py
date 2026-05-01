@@ -78,10 +78,10 @@ async def _llm_repair_fn(
     # Estimate token count (chars / 4 ≈ tokens)
     # Groq free tier: 6000 TPM — skip if prompt alone would exceed ~5000 tokens
     estimated_tokens = len(prompt) // 4
-    if estimated_tokens > 5000:
+    if estimated_tokens > 10000:
         logger.warning(
             f"Stage 4 LLM repair skipped for layer '{layer}': "
-            f"prompt too large (~{estimated_tokens} tokens > 5000 limit). "
+            f"prompt too large (~{estimated_tokens} tokens > 6000 limit). "
             f"Stage 5 boot repair will handle structural fixes."
         )
         return None
