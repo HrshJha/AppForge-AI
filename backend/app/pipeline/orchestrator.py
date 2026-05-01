@@ -37,7 +37,7 @@ from app.pipeline.stage5_packager import generate_execution_report, run_boot_rep
 logger = logging.getLogger(__name__)
 
 # Hard deadline — must respond before Railway's 60s proxy timeout kills the connection
-PIPELINE_TIMEOUT_SECONDS = 45
+PIPELINE_TIMEOUT_SECONDS = 55
 
 
 def _build_domain_from_design(design_ir_dict: dict) -> DomainSection:
