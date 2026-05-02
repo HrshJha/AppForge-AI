@@ -30,13 +30,13 @@ COST_TABLE: dict[str, dict[str, float]] = {
 
 # Token budget per stage
 TOKEN_BUDGETS: dict[str, int] = {
-    "stage1_intent": 2000,
-    "stage2_design": 8000,
-    "stage3_db": 8000,
-    "stage3_api": 8000,
-    "stage3_ui": 8000,
-    "stage3_auth": 4000,
-    "stage4_repair": 8000,
+    "stage1_intent": 1500,
+    "stage2_design": 4000,
+    "stage3_db": 3000,
+    "stage3_api": 3000,
+    "stage3_ui": 2500,
+    "stage3_auth": 1500,
+    "stage4_repair": 2000,
 }
 
 
