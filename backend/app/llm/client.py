@@ -1,6 +1,7 @@
-"""Unified LLM client abstracting GroqCloud and OpenAI APIs.
+"""Unified LLM client abstracting Cerebras, GroqCloud and OpenAI APIs.
 
 Features:
+    - Cerebras primary, Groq automatic fallback
     - temperature=0, JSON mode enforced
     - Token budget enforcement per stage
     - Retry with exponential backoff (max 2 retries)
@@ -24,7 +25,8 @@ logger = logging.getLogger(__name__)
 # Cost per 1M tokens (approximate, for tracking only)
 # ---------------------------------------------------------------------------
 COST_TABLE: dict[str, dict[str, float]] = {
-    "groq": {"input": 0.60, "output": 0.60},
+    "cerebras": {"input": 0.60, "output": 0.60},
+    "groq": {"input": 0.59, "output": 0.79},
     "openai": {"input": 2.5, "output": 10.0},
 }
 
@@ -63,24 +65,39 @@ class LLMResponse:
 
 
 class LLMClient:
-    """Unified client for Cerebras/OpenAI with JSON mode and retry logic."""
+    """Unified client with Cerebras primary + Groq fallback."""
 
     def __init__(self, provider: str | None = None) -> None:
         self.provider: str = provider or settings.LLM_PROVIDER
+        self._cerebras_client: Any = None
         self._groq_client: Any = None
         self._openai_client: Any = None
 
-        if self.provider == "groq":
-            import openai as openai_sdk  # type: ignore[import-untyped]
-            self._groq_client = openai_sdk.OpenAI(
+        import openai as openai_sdk  # type: ignore[import-untyped]
+
+        # Always init Cerebras if key exists
+        if settings.CEREBRAS_API_KEY:
+            self._cerebras_client = openai_sdk.OpenAI(
                 api_key=settings.CEREBRAS_API_KEY,
                 base_url="https://api.cerebras.ai/v1",
             )
-        elif self.provider == "openai":
+            logger.info("Cerebras client initialized (primary)")
+
+        # Always init Groq if key exists (used as fallback)
+        if settings.GROQ_API_KEY:
+            self._groq_client = openai_sdk.OpenAI(
+                api_key=settings.GROQ_API_KEY,
+                base_url="https://api.groq.com/openai/v1",
+            )
+            logger.info("Groq client initialized (fallback)")
+
+        # OpenAI
+        if self.provider == "openai":
             import openai  # type: ignore[import-untyped]
             self._openai_client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
-        else:
-            raise ValueError(f"Unknown LLM provider: {self.provider}")
+
+        if not self._cerebras_client and not self._groq_client and not self._openai_client:
+            raise ValueError("No LLM provider configured — set CEREBRAS_API_KEY or GROQ_API_KEY")
 
     async def generate(
         self,
@@ -96,18 +113,18 @@ class LLMClient:
             try:
                 start = time.time()
 
-                if self.provider == "groq":
-                    content, input_tok, output_tok = await loop.run_in_executor(
-                        None, self._call_groq, prompt, max_tokens
+                if self.provider == "openai":
+                    content, input_tok, output_tok, used_provider = await loop.run_in_executor(
+                        None, self._call_openai, prompt, max_tokens
                     )
                 else:
-                    content, input_tok, output_tok = await loop.run_in_executor(
-                        None, self._call_openai, prompt, max_tokens
+                    content, input_tok, output_tok, used_provider = await loop.run_in_executor(
+                        None, self._call_with_fallback, prompt, max_tokens
                     )
 
                 latency_ms = int((time.time() - start) * 1000)
 
-                cost_rates = COST_TABLE.get(self.provider, {"input": 0.0, "output": 0.0})
+                cost_rates = COST_TABLE.get(used_provider, {"input": 0.0, "output": 0.0})
                 cost_usd = (
                     (input_tok * cost_rates["input"] / 1_000_000)
                     + (output_tok * cost_rates["output"] / 1_000_000)
@@ -154,13 +171,35 @@ class LLMClient:
             f"LLM call failed after {max_retries + 1} attempts: {last_error}"
         )
 
-    def _call_groq(
+    def _call_with_fallback(
+        self, prompt: str, max_tokens: int
+    ) -> tuple[str, int, int, str]:
+        """Try Cerebras first, fall back to Groq on failure."""
+
+        # Try Cerebras first
+        if self._cerebras_client:
+            try:
+                content, input_tok, output_tok = self._call_cerebras(prompt, max_tokens)
+                return content, input_tok, output_tok, "cerebras"
+            except Exception as e:
+                logger.warning(f"Cerebras failed, falling back to Groq: {e}")
+
+        # Fall back to Groq
+        if self._groq_client:
+            try:
+                content, input_tok, output_tok = self._call_groq(prompt, max_tokens)
+                return content, input_tok, output_tok, "groq"
+            except Exception as e:
+                logger.error(f"Groq fallback also failed: {e}")
+                raise
+
+        raise RuntimeError("No LLM provider available")
+
+    def _call_cerebras(
         self, prompt: str, max_tokens: int
     ) -> tuple[str, int, int]:
-        """Call Cerebras API (OpenAI-compatible)."""
-        if self._groq_client is None:
-            raise RuntimeError("Cerebras client not initialized")
-        response = self._groq_client.chat.completions.create(
+        """Call Cerebras API."""
+        response = self._cerebras_client.chat.completions.create(
             model="llama-3.3-70b",
             max_tokens=max_tokens,
             temperature=0,
@@ -184,7 +223,7 @@ class LLMClient:
             try:
                 repaired, _ = repair_json(content)
                 if repaired:
-                    logger.info("Truncated response repaired successfully — skipping retry.")
+                    logger.info("Truncated response repaired — skipping retry.")
                     return content, input_tok, output_tok
             except Exception:
                 pass
@@ -194,9 +233,47 @@ class LLMClient:
 
         return content, input_tok, output_tok
 
-    def _call_openai(
+    def _call_groq(
         self, prompt: str, max_tokens: int
     ) -> tuple[str, int, int]:
+        """Call Groq API."""
+        response = self._groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            max_tokens=max_tokens,
+            temperature=0,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": "You output only valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        content: str = response.choices[0].message.content or ""
+        finish_reason = response.choices[0].finish_reason
+        usage = response.usage
+        input_tok: int = usage.prompt_tokens if usage else 0
+        output_tok: int = usage.completion_tokens if usage else 0
+
+        if finish_reason != "stop":
+            logger.warning(
+                f"Groq response truncated (finish_reason={finish_reason}, "
+                f"content_len={len(content)}). Attempting repair before retry."
+            )
+            try:
+                repaired, _ = repair_json(content)
+                if repaired:
+                    logger.info("Truncated response repaired — skipping retry.")
+                    return content, input_tok, output_tok
+            except Exception:
+                pass
+            raise RuntimeError(
+                f"Groq response truncated: finish_reason={finish_reason}"
+            )
+
+        return content, input_tok, output_tok
+
+    def _call_openai(
+        self, prompt: str, max_tokens: int
+    ) -> tuple[str, int, int, str]:
         """Call OpenAI API with JSON mode."""
         if self._openai_client is None:
             raise RuntimeError("OpenAI client not initialized")
@@ -214,7 +291,7 @@ class LLMClient:
         usage = response.usage
         input_tok: int = usage.prompt_tokens if usage else 0
         output_tok: int = usage.completion_tokens if usage else 0
-        return content, input_tok, output_tok
+        return content, input_tok, output_tok, "openai"
 
 
 # ---------------------------------------------------------------------------
