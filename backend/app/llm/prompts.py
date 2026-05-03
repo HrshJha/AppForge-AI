@@ -44,8 +44,7 @@ OUTPUT JSON SCHEMA:
 }
 
 RULES:
-- Extract at most 10 entities. If more are implied, pick the most important 10 and note the rest in assumptions.
-- If the prompt is vague (e.g. "build me something"), set ambiguity_score >= 0.7 and provide clarification questions.
+- Extract at most 6 entities. If more are implied, pick the most important 6 and note the rest in assumptions.- If the prompt is vague (e.g. "build me something"), set ambiguity_score >= 0.7 and provide clarification questions.
 - If the prompt contains contradictions (e.g. "no login required, show user-specific data"), set ambiguity_score >= 0.6 and note the contradiction.
 - Always include "user" and "admin" roles unless the prompt explicitly says otherwise.
 - If payment/subscription/billing is mentioned, set payment_provider to "stripe".
@@ -87,6 +86,9 @@ OUTPUT JSON SCHEMA:
 RULES:
 - Do NOT invent new entities beyond what the IntentIR specifies. Only expand the ones listed.
 - Every entity must have at minimum: an id field (uuid type) and relevant domain fields.
+- STRICT LIMIT: Max 5 fields per entity. Pick only the most essential fields. Do not add optional or nice-to-have fields.
+- STRICT LIMIT: Max 2 relations per entity.
+- Keep flows to max 3 flows total. Keep each flow to max 5 steps.
 - The User entity must always have: email, password, name, role fields.
 - Always include auth_flow in flows: ["register", "login", "jwt_issue", "role_check"].
 - If payment is involved, include payment_flow: ["plan_select", "checkout", "webhook_confirm", "role_upgrade"].
