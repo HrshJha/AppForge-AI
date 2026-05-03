@@ -19,15 +19,14 @@ class GenerateRequest(BaseModel):
     prompt: str = Field(max_length=2000, description="Natural language app description")
 
 
+import asyncio
+from app.pipeline.orchestrator import run_pipeline
+
 @router.post("/generate", response_model=CompileResponse)
 async def generate(req: GenerateRequest):
     """Run the full compiler pipeline on a natural language prompt."""
     if not req.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
-
-    # Import here to avoid circular imports during module loading
-    from app.pipeline.orchestrator import run_pipeline
-    import asyncio
 
     try:
         # Railway free tier cuts off at 60s, so we timeout at 55s

@@ -153,7 +153,10 @@ async def run_repair_loop(
                         if layer not in report.layers_repaired:
                             report.layers_repaired.append(layer)
                         action.success = True
+                except asyncio.CancelledError:
+                    raise
                 except Exception as e:
+                    logger.error(f"LLM repair failed for layer {layer}: {e}", exc_info=True)
                     action.errors_after = [str(e)]
             else:
                 # No LLM function — can't repair

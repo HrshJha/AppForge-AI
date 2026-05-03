@@ -23,6 +23,11 @@ from app.schemas.app_config import (
 )
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 # Map of layer name → Pydantic model class
 LAYER_MODELS: dict[str, type] = {
     "metadata": MetadataSection,
@@ -60,6 +65,7 @@ def validate_structure(app_config: dict[str, Any]) -> list[ValidationViolation]:
         try:
             model_cls.model_validate(layer_data)
         except PydanticValidationError as e:
+            logger.error(f"Structural validation failed for layer {layer_name}: {e}", exc_info=True)
             for err in e.errors():
                 field_path = ".".join(str(loc) for loc in err["loc"])
                 violations.append(
@@ -85,6 +91,7 @@ def validate_full_config(app_config: dict[str, Any]) -> tuple[ValidatedAppConfig
         config = ValidatedAppConfig.model_validate(app_config)
         return config, []
     except PydanticValidationError as e:
+        logger.error(f"Full config validation failed: {e}", exc_info=True)
         violations = []
         for err in e.errors():
             field_path = ".".join(str(loc) for loc in err["loc"])

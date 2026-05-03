@@ -113,13 +113,15 @@ async def generate_all_schemas(
             schema_dict, stage_metrics = await _generate_layer(stage_key, system_design_ir)
             schemas[layer] = schema_dict
             metrics.append(stage_metrics)
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
-            logger.error(f"Stage 3 {layer} generator failed: {e}")
+            logger.error(f"Stage 3 {layer} generator failed: {e}", exc_info=True)
             raise SchemaGenerationError(layer, str(e)) from e
 
         # Pause between calls to stay within Groq TPM window
         if i < len(stage_keys) - 1:
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
 
     logger.info(
         f"Stage 3 complete: "

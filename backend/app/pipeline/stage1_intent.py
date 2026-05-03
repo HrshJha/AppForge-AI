@@ -6,6 +6,7 @@ Includes preflight validation and ambiguity detection.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from app.core.config import settings
@@ -59,9 +60,13 @@ async def extract_intent(prompt: str) -> tuple[IntentIR, StageMetrics]:
         )
 
     # --- Parse into IntentIR ---
+    loop = asyncio.get_running_loop()
     try:
-        intent_ir = IntentIR.model_validate(response.parsed)
+        intent_ir = await loop.run_in_executor(
+            None, IntentIR.model_validate, response.parsed
+        )
     except Exception as e:
+        logger.error(f"IntentIR validation failed: {e}", exc_info=True)
         raise IntentExtractionError(f"IntentIR validation failed: {e}")
 
     # --- Enforce entity cap ---

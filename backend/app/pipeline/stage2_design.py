@@ -5,6 +5,7 @@ Generates the canonical source of truth that all downstream generators derive fr
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -76,9 +77,13 @@ async def generate_system_design(
         )
 
     # --- Parse into SystemDesignIR ---
+    loop = asyncio.get_running_loop()
     try:
-        design_ir = SystemDesignIR.model_validate(response.parsed)
+        design_ir = await loop.run_in_executor(
+            None, SystemDesignIR.model_validate, response.parsed
+        )
     except Exception as e:
+        logger.error(f"SystemDesignIR validation failed: {e}", exc_info=True)
         raise SystemDesignError(f"SystemDesignIR validation failed: {e}")
 
     # --- Cache result ---

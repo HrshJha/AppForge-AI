@@ -33,11 +33,13 @@ from app.pipeline.stage3_generators import generate_all_schemas, SchemaGeneratio
 from app.pipeline.stage4_validator import validate_app_config
 from app.pipeline.stage4_repair import run_repair_loop
 from app.pipeline.stage5_packager import generate_execution_report, run_boot_repair
+from app.llm.client import get_llm_client
+from app.llm.prompts import PROMPTS
 
 logger = logging.getLogger(__name__)
 
 # Hard deadline — must respond before Railway's 60s proxy timeout kills the connection
-PIPELINE_TIMEOUT_SECONDS = 58
+PIPELINE_TIMEOUT_SECONDS = 55
 
 
 def _build_domain_from_design(design_ir_dict: dict) -> DomainSection:
@@ -64,8 +66,6 @@ async def _llm_repair_fn(
     full_config: dict,
 ) -> dict | None:
     """LLM-based repair function for the repair loop."""
-    from app.llm.client import get_llm_client
-    from app.llm.prompts import PROMPTS
 
     prompt = (
         PROMPTS["stage4_repair"]
@@ -76,9 +76,9 @@ async def _llm_repair_fn(
     )
 
     # Estimate token count (chars / 4 ≈ tokens)
-    # Groq free tier: 6000 TPM — skip if prompt alone would exceed ~5000 tokens
+    # Groq free tier: 6000 TPM — skip if prompt alone would exceed ~6000 tokens
     estimated_tokens = len(prompt) // 4
-    if estimated_tokens > 10000:
+    if estimated_tokens > 6000:
         logger.warning(
             f"Stage 4 LLM repair skipped for layer '{layer}': "
             f"prompt too large (~{estimated_tokens} tokens > 6000 limit). "
@@ -96,6 +96,7 @@ async def _llm_repair_fn(
 
 async def _run_pipeline_inner(prompt: str, job_id: str, start_time: float):
     """Inner pipeline logic — called inside a timeout wrapper."""
+    loop = asyncio.get_running_loop()
     all_metrics: list[StageMetrics] = []
     assumptions: list[str] = []
 
@@ -183,18 +184,21 @@ async def _run_pipeline_inner(prompt: str, job_id: str, start_time: float):
     s5_start = time.time()
 
     # 5a: Run boot repair on raw dict (fixes types, PKs, paths, etc.)
-    boot_repaired_config, boot_report = run_boot_repair(
-        config_dict=repaired_config,
-        max_passes=3,
+    boot_repaired_config, boot_report = await loop.run_in_executor(
+        None, run_boot_repair, repaired_config, 3
     )
 
     # 5b: Try to parse the boot-repaired config into typed model
     try:
-        validated_config = ValidatedAppConfig.model_validate(boot_repaired_config)
-        execution_report = generate_execution_report(validated_config)
+        validated_config = await loop.run_in_executor(
+            None, ValidatedAppConfig.model_validate, boot_repaired_config
+        )
+        execution_report = await loop.run_in_executor(
+            None, generate_execution_report, validated_config
+        )
         logger.info(f"[STAGE 5] Completed successfully — output: {str(execution_report)[:200]}")
     except Exception as e:
-        logger.error(f"Stage 5 failed to parse config after boot repair: {e}")
+        logger.error(f"Stage 5 failed to parse config after boot repair: {e}", exc_info=True)
         execution_report = None
         validated_config = None
 
@@ -266,6 +270,10 @@ async def run_pipeline(prompt: str) -> CompileResponse:
             timeout=PIPELINE_TIMEOUT_SECONDS,
         )
 
+    except asyncio.CancelledError:
+        logger.warning(f"Pipeline job {job_id} was cancelled")
+        raise
+
     except asyncio.TimeoutError:
         elapsed = int((time.time() - start_time) * 1000)
         logger.error(f"Pipeline timed out after {elapsed}ms (limit={PIPELINE_TIMEOUT_SECONDS}s)")
@@ -283,7 +291,7 @@ async def run_pipeline(prompt: str) -> CompileResponse:
 
     except (IntentExtractionError, SystemDesignError, SchemaGenerationError) as e:
         elapsed = int((time.time() - start_time) * 1000)
-        logger.error(f"Pipeline failed: {e}")
+        logger.error(f"Pipeline failed: {e}", exc_info=True)
         return CompileResponse(
             job_id=job_id,
             status="failed",
