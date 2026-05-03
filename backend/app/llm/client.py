@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Cost per 1M tokens (approximate, for tracking only)
 # ---------------------------------------------------------------------------
 COST_TABLE: dict[str, dict[str, float]] = {
-    "groq": {"input": 0.59, "output": 0.79},
+    "groq": {"input": 0.60, "output": 0.60},
     "openai": {"input": 2.5, "output": 10.0},
 }
 
@@ -63,7 +63,7 @@ class LLMResponse:
 
 
 class LLMClient:
-    """Unified client for GroqCloud/OpenAI with JSON mode and retry logic."""
+    """Unified client for Cerebras/OpenAI with JSON mode and retry logic."""
 
     def __init__(self, provider: str | None = None) -> None:
         self.provider: str = provider or settings.LLM_PROVIDER
@@ -73,8 +73,8 @@ class LLMClient:
         if self.provider == "groq":
             import openai as openai_sdk  # type: ignore[import-untyped]
             self._groq_client = openai_sdk.OpenAI(
-                api_key=settings.GROQ_API_KEY,
-                base_url="https://api.groq.com/openai/v1",
+                api_key=settings.CEREBRAS_API_KEY,
+                base_url="https://api.cerebras.ai/v1",
             )
         elif self.provider == "openai":
             import openai  # type: ignore[import-untyped]
@@ -157,11 +157,11 @@ class LLMClient:
     def _call_groq(
         self, prompt: str, max_tokens: int
     ) -> tuple[str, int, int]:
-        """Call GroqCloud API (OpenAI-compatible)."""
+        """Call Cerebras API (OpenAI-compatible)."""
         if self._groq_client is None:
-            raise RuntimeError("Groq client not initialized")
+            raise RuntimeError("Cerebras client not initialized")
         response = self._groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.3-70b",
             max_tokens=max_tokens,
             temperature=0,
             response_format={"type": "json_object"},
@@ -178,7 +178,7 @@ class LLMClient:
 
         if finish_reason != "stop":
             logger.warning(
-                f"Groq response truncated (finish_reason={finish_reason}, "
+                f"Cerebras response truncated (finish_reason={finish_reason}, "
                 f"content_len={len(content)}). Attempting repair before retry."
             )
             try:
@@ -186,10 +186,10 @@ class LLMClient:
                 if repaired:
                     logger.info("Truncated response repaired successfully — skipping retry.")
                     return content, input_tok, output_tok
-            except Exception as e:
+            except Exception:
                 pass
             raise RuntimeError(
-                f"Groq response truncated: finish_reason={finish_reason}"
+                f"Cerebras response truncated: finish_reason={finish_reason}"
             )
 
         return content, input_tok, output_tok

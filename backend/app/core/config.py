@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # --- LLM ---
     LLM_PROVIDER: Literal["groq", "openai"] = "groq"
     GROQ_API_KEY: str = ""
+    CEREBRAS_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
 
     # --- Database ---
