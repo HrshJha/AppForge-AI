@@ -119,7 +119,7 @@ async def generate_all_schemas(
 
         # Pause between calls to stay within Groq TPM window
         if i < len(stage_keys) - 1:
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
 
     logger.info(
         f"Stage 3 complete: "
