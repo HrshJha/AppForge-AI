@@ -200,7 +200,7 @@ class LLMClient:
     ) -> tuple[str, int, int]:
         """Call Cerebras API."""
         response = self._cerebras_client.chat.completions.create(
-            model="gpt-oss-120b",
+            model="llama-3.3-70b",
             max_tokens=max_tokens,
             temperature=0,
             response_format={"type": "json_object"},
