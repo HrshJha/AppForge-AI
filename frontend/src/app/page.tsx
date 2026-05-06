@@ -346,9 +346,12 @@ export default function Home() {
                 </span>
               )}
             </h3>
-            <div className="relative">
-              {/* Connector Line */}
-              <div className="absolute left-[31px] top-[32px] bottom-[32px] w-[2px] bg-white/5 rounded-full overflow-hidden">
+            <div className="relative" style={{ paddingLeft: 0 }}>
+              {/* Connector Line — anchored at left: 20px (half of 40px icon) with translateX(-50%) */}
+              <div
+                className="absolute top-[32px] bottom-[32px] w-[2px] bg-white/5 rounded-full overflow-hidden"
+                style={{ left: '32px', transform: 'translateX(-50%)' }}
+              >
                 {loading && (
                   <motion.div
                     className="w-full bg-gradient-to-b from-blue-500 to-violet-500"
@@ -386,6 +389,7 @@ export default function Home() {
                         ? 'bg-blue-500 text-white border border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.4)] animate-glow'
                         : 'bg-white/5 text-white/20 border border-white/5'}
                     `}
+                      style={{ boxShadow: `0 0 0 3px var(--background)${isCompleted ? ', 0 0 20px rgba(34,197,94,0.15)' : isActive ? ', 0 0 30px rgba(59,130,246,0.4)' : ''}` }}
                     >
                       {isCompleted ? (
                         <motion.div
