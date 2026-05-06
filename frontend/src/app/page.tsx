@@ -346,9 +346,9 @@ export default function Home() {
                 </span>
               )}
             </h3>
-            <div className="space-y-1 relative">
+            <div className="relative">
               {/* Connector Line */}
-              <div className="absolute left-[19px] top-5 bottom-5 w-[2px] bg-white/5 rounded-full overflow-hidden">
+              <div className="absolute left-[31px] top-[32px] bottom-[32px] w-[2px] bg-white/5 rounded-full overflow-hidden">
                 {loading && (
                   <motion.div
                     className="w-full bg-gradient-to-b from-blue-500 to-violet-500"
