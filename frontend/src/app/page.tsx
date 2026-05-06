@@ -19,6 +19,9 @@ import {
   ChevronRight,
   Sparkles,
   Command,
+  History,
+  Trash2,
+  RotateCcw,
 } from 'lucide-react';
 import { compileApp } from '@/lib/api';
 import { CompileResponse } from '@/lib/types';
@@ -40,6 +43,15 @@ const PROMPT_SUGGESTIONS = [
 
 const HERO_WORDS = ['Vision', 'Ideas', 'Concepts', 'Dreams'];
 
+interface HistoryEntry {
+  id: string;
+  prompt: string;
+  status: string;
+  timestamp: number;
+  latency: number;
+  result: CompileResponse;
+}
+
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,7 +62,45 @@ export default function Home() {
   const [stageElapsed, setStageElapsed] = useState(0);
   const [heroWordIndex, setHeroWordIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load history from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('appforge_history');
+      if (stored) setHistory(JSON.parse(stored));
+    } catch (_) {}
+  }, []);
+
+  const saveToHistory = (data: CompileResponse, usedPrompt: string) => {
+    const entry: HistoryEntry = {
+      id: data.job_id || Date.now().toString(),
+      prompt: usedPrompt,
+      status: data.status,
+      timestamp: Date.now(),
+      latency: data.metrics?.total_latency_ms ?? data.metrics?.latency_ms ?? 0,
+      result: data,
+    };
+    const updated = [entry, ...history].slice(0, 10); // keep last 10
+    setHistory(updated);
+    localStorage.setItem('appforge_history', JSON.stringify(updated));
+  };
+
+  const deleteHistoryEntry = (id: string) => {
+    const updated = history.filter((h) => h.id !== id);
+    setHistory(updated);
+    localStorage.setItem('appforge_history', JSON.stringify(updated));
+  };
+
+  const loadHistoryEntry = (entry: HistoryEntry) => {
+    setResult(entry.result);
+    setPrompt(entry.prompt);
+    setCurrentStage(5);
+    setError('');
+    localStorage.setItem('appforge_result', JSON.stringify(entry.result));
+  };
 
   // Rotating hero word
   useEffect(() => {
@@ -97,6 +147,7 @@ export default function Home() {
       clearInterval(stageInterval);
       setCurrentStage(5);
       setResult(data);
+      saveToHistory(data, prompt);
       if (data.status === 'success') {
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
@@ -497,6 +548,76 @@ export default function Home() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Compile History Section */}
+      {history.length > 0 && (
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mt-4"
+        >
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center gap-2 text-sm font-medium text-white/40 hover:text-white/70 transition-colors mb-4 group"
+          >
+            <History className="w-4 h-4" />
+            Recent Compilations ({history.length})
+            <ChevronRight className={`w-3 h-3 transition-transform ${showHistory ? 'rotate-90' : ''}`} />
+          </button>
+
+          <AnimatePresence>
+            {showHistory && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {history.map((entry, idx) => (
+                    <motion.div
+                      key={entry.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="glass rounded-xl p-4 group/card hover:border-white/15 transition-all cursor-pointer card-lift"
+                      onClick={() => loadHistoryEntry(entry)}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="text-xs font-medium text-white/70 line-clamp-2 leading-relaxed flex-1">
+                          {entry.prompt}
+                        </p>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteHistoryEntry(entry.id); }}
+                          className="p-1 rounded-md opacity-0 group-hover/card:opacity-100 hover:bg-red-500/10 hover:text-red-400 text-white/20 transition-all shrink-0"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3 text-[10px] font-mono text-white/30">
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                          entry.status === 'success'
+                            ? 'bg-green-500/10 text-green-400'
+                            : 'bg-amber-500/10 text-amber-400'
+                        }`}>
+                          {entry.status}
+                        </span>
+                        <span>{entry.latency}ms</span>
+                        <span className="ml-auto">{new Date(entry.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-1 text-[10px] text-blue-400/50 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                        <RotateCcw className="w-3 h-3" />
+                        Click to reload
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.section>
+      )}
     </div>
   );
 }
