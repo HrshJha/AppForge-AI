@@ -39,6 +39,14 @@ class APIResource(BaseModel):
     base_path: str = Field(description="Base URL path, e.g. /api/contacts")
     endpoints: list[APIEndpoint] = Field(default_factory=list)
 
+    @field_validator('entity', mode='before')
+    @classmethod
+    def normalize_null_entity(cls, v: str | None) -> str | None:
+        """Convert string 'null' to actual None."""
+        if isinstance(v, str) and v.lower() == "null":
+            return None
+        return v
+
 
 class APISchema(BaseModel):
     """Complete API schema for the generated application."""

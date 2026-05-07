@@ -364,8 +364,8 @@ def _cross_check(config_dict: dict[str, Any]) -> BootCheckResult:
     domain_entity_names = {e.get("name", "") for e in domain.get("entities", [])}
     for resource in api.get("resources", []):
         entity = resource.get("entity")
-        if not entity:
-            continue  # Non-entity resources (e.g., auth) are fine
+        if not entity or entity == "null" or entity.lower() == "null":
+            continue  # Non-entity resources (e.g., auth, analytics, webhooks) are fine
         if entity not in domain_entity_names:
             result.fixes.append(
                 f"CROSS: API resource '{resource.get('name')}' references entity "
