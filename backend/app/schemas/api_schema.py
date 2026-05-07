@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.common import HttpMethod
 
@@ -19,6 +19,14 @@ class APIEndpoint(BaseModel):
     )
     request_body: dict | None = None
     response_schema: dict | None = None
+
+    @field_validator('method', mode='before')
+    @classmethod
+    def uppercase_method(cls, v: str) -> str:
+        """Auto-uppercase HTTP method before Pydantic validates it."""
+        if isinstance(v, str):
+            return v.upper().strip()
+        return v
 
 
 class APIResource(BaseModel):
