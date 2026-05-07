@@ -177,13 +177,14 @@ OUTPUT JSON SCHEMA:
 }
 
 RULES:
-- Generate standard CRUD endpoints for each entity: GET (list), POST (create), GET/{id}, PUT/{id}, DELETE/{id}.
-- Auth resource: POST /api/auth/register (auth_required=false), POST /api/auth/login (auth_required=false), POST /api/auth/refresh.
-- If admin role exists, create at least one admin-only endpoint (e.g. GET /api/analytics/summary with roles: ["admin"]).
-- If payment entities exist, add: POST /api/subscriptions, POST /api/webhooks/stripe (auth_required=false for webhook).
+- You MUST generate one resource block for EVERY entity in the SystemDesignIR. If there are 5 entities, output 5 resources. Never skip an entity.
+- For EACH entity resource, generate ALL 5 standard CRUD endpoints: GET /api/{entity} (list), POST /api/{entity} (create), GET /api/{entity}/{id}, PUT /api/{entity}/{id}, DELETE /api/{entity}/{id}.
+- Always add an auth resource with: POST /api/auth/register (auth_required=false), POST /api/auth/login (auth_required=false), POST /api/auth/refresh (auth_required=true).
+- If admin role exists, add GET /api/analytics/summary with roles: ["admin"].
+- If payment entities exist, add: POST /api/subscriptions, POST /api/webhooks/stripe (auth_required=false).
 - All endpoints default to auth_required=true except: register, login, webhooks.
 - Use the access_control_matrix to set roles on endpoints.
-
+- CRITICAL: Count the entities in the input. Your output resources array length must equal that count plus the auth resource. Do not stop early.
 SYSTEM DESIGN IR:
 {system_design_ir}"""
 
