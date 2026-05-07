@@ -347,17 +347,31 @@ AMBIGUITY_THRESHOLD=0.6
 ### 📜 License
 
 ```text
-MIT License
+Copyright (c) [Year] [Author/Company Name]
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+All rights reserved.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+This software and associated documentation files (the "Software") are made available strictly under the terms and conditions outlined below. By accessing, downloading, viewing, or using this Software, you agree to be bound by the terms of this license.
+
+1. PERMITTED USES
+You are granted a non-exclusive, non-transferable, revocable right to view the source code publicly. You may download, examine, and modify the Software strictly for your own personal, non-commercial, or educational purposes.
+
+2. PROHIBITED USES
+Unless explicitly authorized by prior written permission from the copyright holder, you may NOT:
+a) Use the Software for any commercial, business, or revenue-generating purposes.
+b) Redistribute the Software, or any modified versions thereof, in source or binary form.
+c) Copy, clone, rebrand, or present the Software (or its core functionality) as your own product or service, including SaaS cloning, white-labeling, or deceptive rehosting.
+d) Plagiarize, resell, lease, or sublicense the Software.
+e) Deploy, integrate, or monetize the Software in any public-facing or internal organizational production environment.
+
+3. ATTRIBUTION
+Any permitted use, modification, or reference to the Software must prominently credit the original author ([Author/Company Name]) and retain this original copyright notice and license text in full.
+
+4. COMMERCIAL LICENSING & APPROVAL
+Any major usage, deployment, integration, distribution, or commercial application of the Software falls outside the scope of this license and requires a separate, explicit written agreement. To request commercial usage rights or deployment approval, you must contact the copyright holder directly.
+
+5. DISCLAIMER OF WARRANTY AND LIABILITY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/colored.png" width="100%">
