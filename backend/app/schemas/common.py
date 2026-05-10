@@ -88,3 +88,4 @@ class PipelineMetrics(BaseModel):
     consistency_score: float = 0.0
     assumption_count: int = 0
     stages: list[StageMetrics] = Field(default_factory=list)
+    error: str | None = None  # Set on pipeline failure/timeout

@@ -22,6 +22,7 @@ from app.schemas.app_config import (
     MetadataSection,
     LogicRule,
     LogicSection,
+    RepairLogEntry,
     ExecutionCheck,
     ExecutionReport,
     CompileResponse,
@@ -37,6 +38,6 @@ __all__ = [
     "UISchema", "UIPage", "UIComponent",
     "AuthSchema", "RolePermission", "AuthGuard",
     "ValidatedAppConfig", "DomainEntity", "DomainSection",
-    "MetadataSection", "LogicRule", "LogicSection",
+    "MetadataSection", "LogicRule", "LogicSection", "RepairLogEntry",
     "ExecutionCheck", "ExecutionReport", "CompileResponse",
 ]

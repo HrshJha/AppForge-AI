@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import BaseModel, Field
 
 from app.schemas.auth_schema import AuthSchema
 from app.schemas.api_schema import APISchema
 from app.schemas.db_schema import DBSchema
 from app.schemas.ui_schema import UISchema
+from app.schemas.common import EntityField, ValidationViolation, PipelineMetrics
 
 
 # ---------------------------------------------------------------------------
@@ -19,8 +18,9 @@ from app.schemas.ui_schema import UISchema
 class DomainEntity(BaseModel):
     """A domain entity with typed fields."""
     name: str
-    fields: list[dict[str, Any]] = Field(
-        description="List of field dicts with name, type, required, unique keys"
+    fields: list[EntityField] = Field(
+        default_factory=list,
+        description="Typed fields for this entity",
     )
 
 
@@ -70,6 +70,23 @@ class ValidatedAppConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Repair log entry
+# ---------------------------------------------------------------------------
+
+class RepairLogEntry(BaseModel):
+    """A single entry in the repair log produced during validation.
+
+    Fields mirror RepairAction so orchestrator can pass action.model_dump() directly.
+    """
+    layer: str = Field(description="Pipeline layer that was repaired, e.g. 'db', 'api'")
+    pass_number: int = Field(default=0, description="Repair pass number")
+    errors_before: list[str] = Field(default_factory=list)
+    errors_after: list[str] = Field(default_factory=list)
+    success: bool = False
+    oscillation_detected: bool = False
+
+
+# ---------------------------------------------------------------------------
 # Execution report (Stage 5 output)
 # ---------------------------------------------------------------------------
 
@@ -102,7 +119,7 @@ class CompileResponse(BaseModel):
     execution_report: ExecutionReport | None = None
     intent_ir: dict | None = None
     system_design_ir: dict | None = None
-    validation_errors: list[dict] = Field(default_factory=list)
-    repair_log: list[dict] = Field(default_factory=list)
-    metrics: dict = Field(default_factory=dict)
+    validation_errors: list[ValidationViolation] = Field(default_factory=list)
+    repair_log: list[RepairLogEntry] = Field(default_factory=list)
+    metrics: PipelineMetrics = Field(default_factory=PipelineMetrics)
     clarifications_needed: list[str] = Field(default_factory=list)
